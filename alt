@@ -1,0 +1,312 @@
+// Renderman Preset Tool v0002
+// A simple tool for setting up Renderman sample settings and AOVs 
+
+///// Create Cryptomatte Sample Proc /////
+
+global proc create_cryptomatteSampleFilter()
+{
+	// Create Shadow Display Filter //
+	createNode -n "PxrCryptomatte_base" "PxrCryptomatte";
+
+    // Set Cryptomatte AOVs
+	setAttr "PxrCryptomatte_base.layer" -type "string" "material";
+
+    // Connect Shadow Display Filter //
+	connectAttr PxrCryptomatte_base.message rmanGlobals.sampleFilters[0];
+	
+	print "Created Cryptomatte Sample Filter\n";
+}
+
+global proc createSampleFilter()
+{
+	if(objExists("PxrCryptomatte_base"))
+		{
+			delete("PxrCryptomatte_base");
+			print "Deleted Cryptomatte Sample Filter\n";
+		}
+	else
+		{
+			create_cryptomatteSampleFilter();
+			select -cl;
+		};
+}
+
+
+
+///// Create Shadow Display Proc /////
+
+global proc create_shadowDisplayFilter()
+{
+	// Create Shadow Display Filter //
+	createNode -n "PxrShadowDisplayFilter_base" "PxrShadowDisplayFilter";
+
+    // Set Shadow AOVs
+	setAttr "PxrShadowDisplayFilter_base.occludedAov" -type "string" "occluded";
+	setAttr "PxrShadowDisplayFilter_base.unoccludedAov" -type "string" "unoccluded";
+	setAttr "PxrShadowDisplayFilter_base.shadowAov" -type "string" "shadow";
+	setAttr "PxrShadowDisplayFilter_base.shadowThreshold" 0.01;
+
+    // Connect Shadow Display Filter //
+	connectAttr PxrShadowDisplayFilter_base.message rmanGlobals.displayFilters[0];
+	
+	print "Created Shadow Display Filter\n";
+}
+
+global proc createDisplayFilter()
+{
+	if(objExists("PxrShadowDisplayFilter_base"))
+		{
+			delete("PxrShadowDisplayFilter_base");
+			print "Deleted Shadow Display Filter\n";
+		}
+	else
+		{
+			create_shadowDisplayFilter();
+			select -cl;
+		};
+}
+
+///// Create AOV Proc /////
+
+global proc createAOV_preset(string $aov, string $channelType, string $channelSource, int $i, int $rpv )
+{
+       	if(objExists($aov))
+		{
+			delete($aov);
+			print ("Deleted "+$aov+"\n");
+		}
+		else
+		{
+		//Create AOV 
+		createNode -n $aov "rmanDisplayChannel";
+		setAttr ($aov+".enable") yes;
+		setAttr ($aov+".channelType") -type "string" $channelType;
+		setAttr ($aov+".channelSource") -type "string" $channelSource;
+		setAttr ($aov+".relativepixelvariance") $rpv;
+		connectAttr ($aov+".message") rmanDefaultDisplay.displayChannels[$i];
+		print ("Created "+$aov+"\n");
+		};
+}		
+
+global proc createAOV()
+{
+	// Create albedo AOV //
+	{
+	string $aov_name="albedo";
+	string $channelType_name="color";
+	string $channelSource_name= "lpe:nothruput;noinfinitecheck;noclamp;unoccluded;overwrite;C<.S'passthru'>*((U2L)|O)";
+	int $number=2;
+	int $number_rpv=1;
+	createAOV_preset($aov_name, $channelType_name, $channelSource_name, $number, $number_rpv);
+	}
+
+	// Create directDiffuse AOV //
+	{
+	string $aov_name="directDiffuse";
+	string $channelType_name="color";
+	string $channelSource_name="lpe:C<RD>[<L.>O]";
+	int $number=3;
+	int $number_rpv=1;
+	createAOV_preset($aov_name, $channelType_name, $channelSource_name, $number, $number_rpv);
+	}
+
+	// Create indirectDiffuse AOV //
+	{
+	string $aov_name="indirectDiffuse";
+	string $channelType_name="color";
+	string $channelSource_name="lpe:C<RD>[DS]+[<L.>O]";
+	int $number=4;
+	int $number_rpv=1;
+	createAOV_preset($aov_name, $channelType_name, $channelSource_name, $number, $number_rpv);
+	}
+
+	// Create directSpecular AOV //
+	{
+	string $aov_name="directSpecular";
+	string $channelType_name="color";
+	string $channelSource_name="lpe:C<RS>[<L.>O]";
+	int $number=5;
+	int $number_rpv=1;
+	createAOV_preset($aov_name, $channelType_name, $channelSource_name, $number, $number_rpv);
+	}
+
+	// Create indirectSpecular AOV //
+	{
+	string $aov_name="indirectSpecular";
+	string $channelType_name="color";
+	string $channelSource_name="lpe:C<RS>[DS]+[<L.>O]";
+	int $number=6;
+	int $number_rpv=1;
+	createAOV_preset($aov_name, $channelType_name, $channelSource_name, $number, $number_rpv);
+	}
+
+	// Create subsurface AOV //
+	{
+	string $aov_name="subsurface";
+	string $channelType_name="color";
+	string $channelSource_name="lpe:C<TD>[DS]*[<L.>O]";
+	int $number=7;
+	int $number_rpv=1;
+	createAOV_preset($aov_name, $channelType_name, $channelSource_name, $number, $number_rpv);
+	}
+
+	// Create transmissive AOV //
+	{
+	string $aov_name="transmissive";
+	string $channelType_name="color";
+	string $channelSource_name="lpe:C<TS>[DS]*[<L.>O]";
+	int $number=8;
+	int $number_rpv=1;
+	createAOV_preset($aov_name, $channelType_name, $channelSource_name, $number, $number_rpv);
+	}
+
+	// Create emissive AOV //
+	{
+	string $aov_name="emissive";
+	string $channelType_name="color";
+	string $channelSource_name="lpe:C[<L.>O]";
+	int $number=9;
+	int $number_rpv=1;
+	createAOV_preset($aov_name, $channelType_name, $channelSource_name, $number, $number_rpv);
+	}
+
+	// Create __Pref AOV //
+	{
+	string $aov_name="__Pref";
+	string $channelType_name="color";
+	string $channelSource_name="__Pref";
+	int $number=10;
+	int $number_rpv=-1;
+	createAOV_preset($aov_name, $channelType_name, $channelSource_name, $number, $number_rpv);
+	}
+	
+	// Create __Pworld AOV //
+	{
+	string $aov_name="__Pworld";
+	string $channelType_name="color";
+	string $channelSource_name="__Pworld";
+	int $number=11;
+	int $number_rpv=-1;
+	createAOV_preset($aov_name, $channelType_name, $channelSource_name, $number, $number_rpv);
+	}
+
+	// Create __st AOV //
+	{
+	string $aov_name="__st";
+	string $channelType_name="color";
+	string $channelSource_name="__st";
+	int $number=12;
+	int $number_rpv=-1;
+	createAOV_preset($aov_name, $channelType_name, $channelSource_name, $number, $number_rpv);
+	}
+
+	// Create Nn AOV //
+	{
+	string $aov_name="Nn";
+	string $channelType_name="normal";
+	string $channelSource_name="Nn";
+	int $number=13;
+	int $number_rpv=-1;
+	createAOV_preset($aov_name, $channelType_name, $channelSource_name, $number, $number_rpv);
+	}
+	
+	// Create z AOV //
+	{
+	string $aov_name="z";
+	string $channelType_name="float";
+	string $channelSource_name="z";
+	int $number=14;
+	int $number_rpv=-1;
+	createAOV_preset($aov_name, $channelType_name, $channelSource_name, $number, $number_rpv);
+	}
+
+	// Create beauty AOV //
+	{
+	string $aov_name="beauty";
+	string $channelType_name="color";
+	string $channelSource_name="lpe:C[DS]*[<L.>O]";
+	int $number=15;
+	int $number_rpv=1;
+	createAOV_preset($aov_name, $channelType_name, $channelSource_name, $number, $number_rpv);
+	}
+	
+	// Create shadow AOV //
+	{
+	string $aov_name="shadow";
+	string $channelType_name="color";
+	string $channelSource_name="lpe:holdouts;unoccluded;C[DS]+<L.>";
+	int $number=16;
+	int $number_rpv=-1;
+	createAOV_preset($aov_name, $channelType_name, $channelSource_name, $number, $number_rpv);
+	}
+
+	// Create occluded AOV //
+	{
+	string $aov_name="occluded";
+	string $channelType_name="color";
+	string $channelSource_name="lpe:C[DS]+[LO]";
+	int $number=17;
+	int $number_rpv=-1;
+	createAOV_preset($aov_name, $channelType_name, $channelSource_name, $number, $number_rpv);
+	}
+	
+	// Create unoccluded AOV //
+	{
+	string $aov_name="unoccluded";
+	string $channelType_name="color";
+	string $channelSource_name="lpe:unoccluded;C[DS]+[LO]";
+	int $number=18;
+	int $number_rpv=-1;
+	createAOV_preset($aov_name, $channelType_name, $channelSource_name, $number, $number_rpv);
+	}
+	
+	select -cl;
+}
+
+///// Render Quality Settings /////
+
+global proc set_high_render_settings()
+{
+    setAttr "rmanGlobals.hider_minSamples" 64;
+    setAttr "rmanGlobals.hider_maxSamples" 1024;
+    setAttr "rmanGlobals.ri_pixelVariance" 0.01;
+    print "Set to High Render Settings\n";  
+}
+
+global proc set_medium_render_settings()
+{
+    setAttr "rmanGlobals.hider_minSamples" 0;
+    setAttr "rmanGlobals.hider_maxSamples" 256;
+    setAttr "rmanGlobals.ri_pixelVariance" 0.05;
+    print "Set to Medium Render Settings\n";  
+}
+
+global proc set_draft_render_settings()
+{
+    setAttr "rmanGlobals.hider_minSamples" 0;
+    setAttr "rmanGlobals.hider_maxSamples" 128;
+    setAttr "rmanGlobals.ri_pixelVariance" 0.1;
+	print "Set to Draft Render Settings\n";  
+   
+}
+
+///// Maya Window Settings /////
+
+window -title "Renderman Preset Tool" -widthHeight 300 200 presetWindow;
+	if (`windowPref -exists presetWindow`) windowPref -remove presetWindow;
+        frameLayout -label "Render Quality Settings" -collapsable true;
+        gridLayout -numberOfColumns 3 -cellWidthHeight 100 20;
+            button -label "High" -command "set_high_render_settings()";
+	    	button -label "Medium" -command "set_medium_render_settings()";
+		    button -label "Low" -command "set_draft_render_settings()";
+		setParent ..;
+		
+		frameLayout -label "Create AOV Settings" -collapsable true;
+		gridLayout -numberOfColumns 3 -cellWidthHeight 100 20;
+			button -label "Base AOVs" -command "createAOV()";
+			button - label "Shadow Filter" -command "createDisplayFilter()";
+			button - label "Cryptomatte" -command "createSampleFilter()";
+		setParent ..;
+		
+showWindow presetWindow;
+
