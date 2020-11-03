@@ -1,0 +1,225 @@
+import maya.cmds as cmds
+
+
+##2020 Lopsie Schwartz 
+##Encore VFX
+##Render presets and AOVs
+## 
+
+
+def initialize_window():
+    #Check to see if the window already exists
+    if cmds.window("AOVpicker", exists=True):
+        cmds.deleteUI("AOVpicker")    
+    #Create window
+    UIwindow = cmds.window("AOVpicker", title="AOV Library", resizeToFitChildren=1, mnb=False, mxb=False, sizeable=True)
+	
+	#Banner image
+	imagePath = cmds.internalVar(upd = True) + "icons/AOVHeaderImage.jpg"
+	
+	#create projects option menu Item 
+	projectsOptionsMenu = cmds.optionMenu (w = 300, label = "Project")
+	cmds.separator (h = 15)
+	
+	#create type options menu
+	typeOptionsMenu = cmds.optionMenu (w = 300, label = "Type   ")
+	cmds.separator (h = 15)
+	
+	#create AOV options menu
+	AOVOptionsMenu = cmds.optionMenu (w = 300, label = "AOV    ")
+	cmds.separator (h = 15)
+	
+	#create import button
+	cmds.button (label = "Import", w = 300, h = 50 annotation = "Bring in selected AOVs")
+
+    UIDict = {}
+    
+    UIDict["convertForm"] = cmds.formLayout("Convert")
+    UIDict["buttonsLayout"] = cmds.frameLayout(label="Material Converter", mh=8)
+    cmds.text("First make sure you resolve your paths. Then use this tool to convert Maya materials to PxrSurface Materials and Renderman Shadergroups. Any values/connections on few basic parameters will be carried over during the conversion.", wordWrap=True)
+    UIDict["oldMatsMenu"] = cmds.optionMenu(label="Old Materials")
+    cmds.menuItem(label="Common Maya Materials", ann="Includes lambert, phong, phongE, and blinn.")
+    cmds.menuItem(label="Other Renderman Materials", ann="Includes PxrDisney, PxrLMDiffuse, PxrLMPlastic, PxrLMMetal, PxrLMGlass, and PxrLMSubsurface.")
+    cmds.menuItem(label="lambert")
+    cmds.menuItem(label="phong")
+    cmds.menuItem(label="phongE")
+    cmds.menuItem(label="blinn")
+    cmds.menuItem(label="PxrSurface")
+    UIDict["newMatMenu"] = cmds.optionMenu(label="New Material")
+    cmds.menuItem(label="PxrSurface")
+    cmds.menuItem(label="PxrLayerSurface") ##this is not ready yet, but planning on working with it in future iterations
+    UIDict["deleteOldBox"] = cmds.checkBox(label="Delete Old Material", v=False, annotation="If checked, the old material will automatically be deleted after conversion.")
+    UIDict["useSelectionBox"] = cmds.checkBox(label="Convert Selected", v=True, annotation="If checked, only materials or objects that are selected will be converted regardless of material type.")
+    UIDict["matchFromButton"] = cmds.button(label="Convert!", annotation="Convert materials.",
+                                         command=lambda *args: mayaToRenderman(cmds.optionMenu(UIDict["oldMatsMenu"], q=True, v=True), 
+                                                                                  cmds.optionMenu(UIDict["newMatMenu"], q=True, v=True),
+                                                                                  cmds.checkBox(UIDict["deleteOldBox"], q=True, v=True),
+                                                                                  cmds.checkBox(UIDict["useSelectionBox"], q=True, v=True),
+                                                                                  get_material_attributes()))
+    cmds.setParent(u=True)
+    cmds.formLayout(UIDict["convertForm"], edit=True, attachForm=[(UIDict["buttonsLayout"], "top", 5), (UIDict["buttonsLayout"], "left", 5)],
+                                                    attachPosition=[(UIDict["buttonsLayout"], 'right', 5, 100)])    
+    cmds.showWindow(UIwindow)
+
+def mayaToRenderman(matList, newMatType, deleteOld, useSelection, matAttrs):
+    
+    #checking validity
+    if matList == newMatType:
+        cmds.error("Old Material and New Material are the same!")
+    if matList == "Common Maya Materials":
+        matList = ["lambert", "phong", "phongE", "blinn"]
+    elif matList == "Other Renderman Materials":
+        cmds.error("This script is not made to convert other Pixar Shaders or to update them.")
+        
+    if useSelection:
+        sel = cmds.ls(sl=True)
+        if not sel:
+            cmds.error("Please select objects with materials you'd like to convert or uncheck \"Convert Selected\".")
+        materials = materials_from_selection(sel)
+
+    else:
+        materials = cmds.ls(mat=True)
+
+    
+    
+    for oldMaterial in materials:
+        oldMatType = cmds.nodeType(oldMaterial)
+        if oldMaterial == "particleCloud1" or (not useSelection and oldMatType not in matList):
+            continue
+        print "Processing Shader: "+oldMaterial+"\n"    
+        
+
+        # Create RenderMan Shader and set Attributes
+        newMaterial = cmds.shadingNode(newMatType, asShader=True)
+
+        cmds.setAttr(newMaterial + '.specularFresnelMode', 1) # Artistic=0 / Physical=1
+        cmds.setAttr(newMaterial + '.specularModelType', 1) # ggx = 1 
+        
+        #Replace material on existing shader group
+        shaderGroup = cmds.listConnections(oldMaterial+".outColor")[0]
+        cmds.connectAttr(newMaterial+".outColor", shaderGroup+".surfaceShader", f=True)
+        transName = cmds.rename(newMaterial, oldMaterial.replace(oldMatType, newMatType))
+        if deleteOld and oldMaterial != "lambert1":
+            cmds.delete(oldMaterial)
+
+        
+        #Go through common material attributes of the old material and set/connect them for the new material where applicable
+        for matChannel in matAttrs:
+            oldMatAttr = matAttrs[matChannel][oldMatType]
+            newMatAttr = matAttrs[matChannel][newMatType]
+            print "matChannel is " + matChannel + " with oldMatType of  " + oldMatType + " and newMatType of " + newMatType + "\n"
+            
+            if newMatAttr and oldMatAttr:
+                #If the attribute is connected to a map, connect it to the new material
+                if cmds.connectionInfo(oldMaterial+oldMatAttr, id=True):
+                    if matChannel == "overallBump":
+                        fileInputName = (oldMaterial + oldMatAttr)
+                        nodeName = cmds.listConnections(fileInputName)[0]
+                        myBumpFileName = (nodeName + '.bumpValue')
+                        bumpFileConnection = cmds.listConnections(myBumpFileName)[0]
+                        bumpFile = (bumpFileConnection + '.fileTextureName')
+                        bumpFilePath = cmds.getAttr (bumpFile)
+                        print "The bump File Path is " + bumpFilePath
+						
+
+                        #creating pxrTexture node
+                        nrml_NODE = cmds.shadingNode("PxrNormalMap", asTexture=True)
+						normalFile_node = cmds.shadingNode("PxrTexture", name = 'Normal_Map', asTexture=True)
+                        cmds.setAttr(nrml_NODE + '.orientation', 1) # OpenGL=0 / DirectX=1
+                        channel_node = cmds.shadingNode("PxrNormalMap", name = (matChannel + '_Map'), asTexture=True)
+                        #cmds.setAttr(channel_node + '.linearize', 1) # Linearize 0=OFF / 1=ON
+                        cmds.setAttr(nrml_NODE+'.filename', bumpFilePath, type="string")
+                        cmds.connectAttr('%s.resultRGB' %normalFile_node, '%s.inputRGB' %nrml_NODE)
+                        cmds.connectAttr('%s.resultN' %nrml_NODE, ('%s.bumpNormal) %transName)
+
+
+
+                    else:
+                        #get old map info
+                        oldFileConnection = (oldMaterial + oldMatAttr)
+
+                        nodeName = cmds.listConnections(oldFileConnection)[0]
+                        myFileName = (nodeName + '.fileTextureName')
+                        filepath = cmds.getAttr (myFileName)
+						#create pxrTexture node and connect to Renderman shader
+                        channel_node = cmds.shadingNode("PxrTexture", name = (matChannel + '_Map'), asTexture=True)
+                        cmds.setAttr(channel_node + '.linearize', 1) # Linearize 0=OFF / 1=ON
+                        cmds.setAttr(channel_node+'.filename', filepath, type="string")
+                        cmds.connectAttr('%s.resultRGB' %channel_node, ('%s'+ newMatAttr) %transName)
+
+
+                #If no map but some other attribute's value then print note
+                else:
+
+                    print "there is no map associated with this attribute, but there appears to be some type of setting"+"\n"
+
+        
+
+#Goes through a list of objects and returns all of the materials or materials attached to objects in the list
+def materials_from_selection(sel):
+    materials = []
+    matList = ["lambert", "phong", "phongE", "blinn", "PxrSurface", "PxrLayerSurface"]
+    for s in sel:
+        if cmds.nodeType(s) in matList:
+            materials += s
+        else:
+            for shape in cmds.listRelatives(s, shapes=True) or []:
+                shaderGroup = cmds.listConnections(shape, type="shadingEngine")[0]
+                material = cmds.listConnections(shaderGroup+".surfaceShader", d=False)
+                materials += material
+    return materials
+                
+        
+#Retrieves the names of the attributes for different types of materials
+def get_material_attributes():
+    #Map common material controls to their attribute names for each material
+    matAttrs = {"diffuseGain":{"lambert":".diffuse", "phong":".diffuse", "phongE":".diffuse", "blinn":".diffuse", 
+                               "PxrSurface":".diffuseGain"},
+                "diffuseColor":{"lambert":".color", "phong":".color", "phongE":".color", "blinn":".color", 
+                                "PxrSurface":".diffuseColor"},
+                "diffuseRoughness":{"lambert":None, "phong":None, "phongE":None, "blinn":None, 
+                                    "PxrSurface":".diffuseRoughness"},
+                "specularColor":{"lambert":None, "phong":".reflectedColor", "phongE":".specularColor", "blinn":".specularColor",
+                                 "PxrSurface":".specularEdgeColor"},
+                "specularRefractionIndex":{"lambert":None, "phong":None, "phongE":None, "blinn":None,  
+                                           "PxrSurface":".specularIor"},
+                "specularExtinctionCoefficient":{"lambert":None, "phong":None, "phongE":None, "blinn":None, 
+                                                 "PxrSurface":".specularExtinctionCoeff"},
+                "specularRoughness":{"lambert":None, "phong":None, "phongE":None, "blinn":None, 
+                                     "PxrSurface":".specularRoughness"},
+                "specularAnisotropy":{"lambert":None, "phong":None, "phongE":None, "blinn":None, 
+                                      "PxrSurface":".specularAnisotropy"},
+                "clearcoatColor":{"lambert":None, "phong":None, "phongE":None, "blinn":None,  
+                                  "PxrSurface":".clearcoatEdgeColor"},
+                "clearcoatRefractionIndex":{"lambert":None, "phong":None, "phongE":None, "blinn":None, 
+                                            "PxrSurface":".clearcoatIor"},
+                "clearcoatRoughness":{"lambert":None, "phong":None, "phongE":None, "blinn":None, 
+                                      "PxrSurface":".clearcoatRoughness"},                                     
+                "incandescence":{"lambert":".incandescence", "phong":".incandescence", "phongE":".incandescence", "blinn":".incandescence", 
+                                 "PxrSurface":".iridescencePrimaryColor"},  
+                "subsurfaceColor":{"lambert":None, "phong":None, "phongE":None, "blinn":None, 
+                                   "PxrSurface":".subsurfaceColor"},
+                "shortSubsurfaceColor":{"lambert":None, "phong":None, "phongE":None, "blinn":None, 
+                                        "PxrSurface":".shortSubsurfaceColor"},
+                "longSubsurfaceColor":{"lambert":None, "phong":None, "phongE":None, "blinn":None, 
+                                       "PxrSurface":".longSubsurfaceColor"},
+                "subsurfaceFollowTopology":{"lambert":None, "phong":None, "phongE":None, "blinn":None,  
+                                            "PxrSurface":".followTopology"},
+                "subsurfaceConsiderBackside":{"lambert":None, "phong":None, "phongE":None, "blinn":None, 
+                                              "PxrSurface":".considerBackside"},
+                "glassRefractionColor":{"lambert":None, "phong":None, "phongE":None, "blinn":None, 
+                                       "PxrSurface":".refractionColor"},
+                "glassRouchness":{"lambert":None, "phong":None, "phongE":None, "blinn":None,  
+                                  "PxrSurface":".glassRoughness"},
+                "glassRefractiveIndex":{"lambert":None, "phong":None, "phongE":None, "blinn":None,  
+                                        "PxrSurface":".glassIor"},
+                "glassThin":{"lambert":None, "phong":None, "phongE":None, "blinn":None, 
+                             "PxrSurface":".thinGlass"},                                                                                                       
+                "overallBump":{"lambert":".normalCamera", "phong":".normalCamera", "phongE":".normalCamera", "blinn":".normalCamera", 
+                               "PxrSurface":".bumpNormal"},                
+                "transparency":{"lambert":".transparency", "phong":".transparency", "phongE":".transparency", "blinn":".transparency", 
+                                "PxrSurface":".presence"}
+               }
+    return matAttrs
+
+initialize_window()
