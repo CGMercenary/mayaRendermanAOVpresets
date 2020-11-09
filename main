@@ -66,28 +66,20 @@ def mayaRendermanSettings(proj, aov, renQ, selAov, selCrypt, selShad, selRQ, foo
         print "You're so cool!"
     else: 
         print "blah blah blah"
-        
+
     if selShad:
-        set_shadow_settings
-        
+        print "this works"
+        cmds.createNode("PxrShadowDisplayFilter_base", n="PxrShadowDisplayFilter")
+        print "but did this?"
+        cmds.connectAttr("PxrShadowDisplayFilter_base.message", "rmanGlobals.displayFilters[0]")
+        print "or this"
+        cmds.setAttr("PxrShadowDisplayFilter_base.occludedAov", "occluded", type="string")
+        cmds.setAttr("PxrShadowDisplayFilter_base.unoccludedAov", "unoccluded", type="string")
+        cmds.setAttr("PxrShadowDisplayFilter_base.shadowAov", "shadow", type="string")
+        cmds.setAttr("PxrShadowDisplayFilter_base.shadowThreshold", 0.01)
+      
     if selRQ:
         set_renderman_render_sample(renQ)
-        
-def set_shadow_settings:
-    if "PxrShadowDisplayFilter_base":
-        print "exists"
-        cmds.delete("PxrShadowDisplayFilter_base")
-        print "deleted"
-    else:
-        print "does not exist"
-        
-    cmds.createNode("PxrShadowDisplayFilter_base", n="PxrShadowDisplayFilter")
-    cmds.connectAttr("PxrShadowDisplayFilter_base.message", "rmanGlobals.displayFilters[0]")
-    #
-	cmds.setAttr("PxrShadowDisplayFilter_base.occludedAov" -type "string" "occluded")
-	cmds.setAttr("PxrShadowDisplayFilter_base.unoccludedAov" -type "string" "unoccluded")
-	cmds.setAttr("PxrShadowDisplayFilter_base.shadowAov" -type "string" "shadow")
-	cmds.setAttr("PxrShadowDisplayFilter_base.shadowThreshold" 0.01)
         
 def set_renderman_render_sample(renQ):
     print renQ
@@ -101,12 +93,12 @@ def set_renderman_render_sample(renQ):
         cmds.setAttr("rmanGlobals.hider_minSamples", 0)
         cmds.setAttr("rmanGlobals.hider_maxSamples", 256)
         cmds.setAttr("rmanGlobals.ri_pixelVariance", 0.05)
-        print "Render Quality set to High Render Settings"
+        print "Render Quality set to Med Render Settings"
     elif renQ == "Low":
         cmds.setAttr("rmanGlobals.hider_minSamples", 0)
         cmds.setAttr("rmanGlobals.hider_maxSamples", 128)
         cmds.setAttr("rmanGlobals.ri_pixelVariance", 0.1)
-        print "Render Quality set to High Render Settings"
+        print "Render Quality set to Low Render Settings"
     else:
         print "Don't be absurd. This is not an option"
         
