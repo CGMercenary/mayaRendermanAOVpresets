@@ -72,7 +72,25 @@ def mayaRendermanSettings(proj, aov, renQ, selAov, selCrypt, selShad, selRQ, foo
         
 def set_renderman_render_sample(renQ):
     print renQ
-
+    
+    if renQ == "High":
+        cmds.setAttr("rmanGlobals.hider_minSamples", 64)
+        cmds.setAttr("rmanGlobals.hider_maxSamples", 1024)
+        cmds.setAttr("rmanGlobals.ri_pixelVariance", 0.01)
+        print "Render Quality set to High Render Settings"
+    elif renQ == "Med":
+        cmds.setAttr("rmanGlobals.hider_minSamples", 0)
+        cmds.setAttr("rmanGlobals.hider_maxSamples", 256)
+        cmds.setAttr("rmanGlobals.ri_pixelVariance", 0.05)
+        print "Render Quality set to High Render Settings"
+    elif renQ == "Low":
+        cmds.setAttr("rmanGlobals.hider_minSamples", 0)
+        cmds.setAttr("rmanGlobals.hider_maxSamples", 128)
+        cmds.setAttr("rmanGlobals.ri_pixelVariance", 0.1)
+        print "Render Quality set to High Render Settings"
+    else:
+        print "Don't be absurd. This is not an option"
+        
 def get_renderman_settings_attributes():
     print "This does nothing, but passes out foo \n"
     foo=3
