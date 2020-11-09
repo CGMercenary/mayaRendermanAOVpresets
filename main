@@ -9,167 +9,51 @@ import os
 
 def initialize_window():
     #Check to see if the window already exists
-    if cmds.window("PresetPicker", exists=True):
-    	cmds.deleteUI("PresetPicker")    
+    if cmds.window("RendermanPresetWindow", exists=True):
+        cmds.deleteUI("RendermanPresetWindow")    
     #Create window
-    UIwindow = cmds.window("PresetPicker", title="Renderman Presets", resizeToFitChildren=1, mnb=False, mxb=False, sizeable=True)
-	
-#Banner image
-#imagePath = cmds.internalVar(upd = True) + "icons/AOVHeaderImage.jpg"
-#	
-#	#create projects option menu Item 
-#	projectsOptionsMenu = cmds.optionMenu (w = 300, label = "Project")
-#	cmds.separator (h = 15)
-#	
-#	#create type options menu
-#	typeOptionsMenu = cmds.optionMenu (w = 300, label = "Type   ")
-#	cmds.separator (h = 15)
-#	
-#	#create AOV options menu
-#	AOVOptionsMenu = cmds.optionMenu (w = 300, label = "AOV    ")
-#	cmds.separator (h = 15)
-#	
-#	#create import button
-#	cmds.button (label = "Import", w = 300, h = 50 annotation = "Bring in selected AOVs")
-
+    UIwindow = cmds.window("RendermanPresetWindow", title="Renderman Presets", resizeToFitChildren=1, mnb=False, mxb=False, sizeable=True)
     UIDict = {}
+    
     UIDict["convertForm"] = cmds.formLayout("Convert")
-    UIDict["buttonsLayout"] = cmds.frameLayout(label="Material Converter", mh=8)
-    cmds.text("First make sure you resolve your paths. Then use this tool to convert Maya materials to PxrSurface Materials and Renderman Shadergroups. Any values/connections on few basic parameters will be carried over during the conversion.", wordWrap=True)
-    UIDict["oldMatsMenu"] = cmds.optionMenu(label="Old Materials")
-    cmds.menuItem(label="Common Maya Materials", ann="Includes lambert, phong, phongE, and blinn.")
-    cmds.menuItem(label="Other Renderman Materials", ann="Includes PxrDisney, PxrLMDiffuse, PxrLMPlastic, PxrLMMetal, PxrLMGlass, and PxrLMSubsurface.")
-    cmds.menuItem(label="lambert")
-    cmds.menuItem(label="phong")
-    cmds.menuItem(label="phongE")
-    cmds.menuItem(label="blinn")
-    cmds.menuItem(label="PxrSurface")
-    UIDict["newMatMenu"] = cmds.optionMenu(label="New Material")
-    cmds.menuItem(label="PxrSurface")
-    cmds.menuItem(label="PxrLayerSurface") ##this is not ready yet, but planning on working with it in future iterations
-    UIDict["deleteOldBox"] = cmds.checkBox(label="Delete Old Material", v=False, annotation="If checked, the old material will automatically be deleted after conversion.")
-    UIDict["useSelectionBox"] = cmds.checkBox(label="Convert Selected", v=True, annotation="If checked, only materials or objects that are selected will be converted regardless of material type.")
-    UIDict["matchFromButton"] = cmds.button(label="Convert!", annotation="Convert materials.",
-                                         command=lambda *args: mayaToRenderman(cmds.optionMenu(UIDict["oldMatsMenu"], q=True, v=True), 
-                                                                                  cmds.optionMenu(UIDict["newMatMenu"], q=True, v=True),
-                                                                                  cmds.checkBox(UIDict["deleteOldBox"], q=True, v=True),
-                                                                                  cmds.checkBox(UIDict["useSelectionBox"], q=True, v=True),
+    UIDict["buttonsLayout"] = cmds.frameLayout(label="AOVs", mh=8)
+    cmds.text("Select a show or project, then the type of AOVs you want.", wordWrap=True)
+    UIDict["projectMenu"] = cmds.optionMenu(label="Show or Project")
+    cmds.menuItem(label="BATW", ann="currently only working item")
+    cmds.menuItem(label="CTPJ", ann="for Denys")
+    cmds.menuItem(label="DOOM", ann="for Richard")
+    cmds.menuItem(label="FLAS", ann="for Shirak")
+    cmds.menuItem(label="SUPR", ann="for Galen")
+    cmds.menuItem(label="Generic", ann="for the cool kids")
+    UIDict["aovType"] = cmds.optionMenu(label="AOV Type")
+    cmds.menuItem(label="Generic", ann="the basic AOV set")
+    cmds.menuItem(label="Vehicle", ann="for the batmobile specifically") 
+   
+    UIDict["convertForm"] = cmds.formLayout("Convert")
+    UIDict["buttonsLayout"] = cmds.frameLayout(label="Render Quality", mh=8)
+    cmds.text("Select the levels of sampling you wish to use for renders", wordWrap=True)
+    UIDict["RenderMenu"] = cmds.optionMenu(label="Renderman Render Level")
+    cmds.menuItem(label="Low", ann="current default for LnR wips")
+    cmds.menuItem(label="Med", ann="for Goldilocks only")
+    cmds.menuItem(label="High", ann="final render quality")
+    cmds.menuItem(label="Absurd", ann="it'll never finish rendering")
+    
+    UIDict["aovBox"] = cmds.checkBox(label="Create AOVs", v=False, annotation="If checked, the AOVs will be created.")
+    UIDict["cryptomatteBox"] = cmds.checkBox(label="Create Standard Cryptomattes", v=False, annotation="If checked, Cryptomattes will be generated for Name, Path and Material.")
+    UIDict["shadowBox"] = cmds.checkBox(label="Create Shadow Passes", v=True, annotation="If checked, filters will be set to allow for shadow mattes")
+    UIDict["renQualBox"] = cmds.checkBox(label="Set Render Quality", v=False, annotation="If checked, the render samples will be set to the quality chosen above.")
+    
+     
+
+    UIDict["matchFromButton"] = cmds.button(label="Do It!", annotation="Don't press this button yet!",
+                                         command=lambda *args: mayaToRenderman(cmds.optionMenu(UIDict["projectMenu"], q=True, v=True), 
+                                                                                  cmds.optionMenu(UIDict["aovType"], q=True, v=True),
+                                                                                  cmds.checkBox(UIDict["cryptomattedBox"], q=True, v=True),
+                                                                                  cmds.checkBox(UIDict["shadowBox"], q=True, v=True),
                                                                                   get_material_attributes()))
     cmds.setParent(u=True)
     cmds.formLayout(UIDict["convertForm"], edit=True, attachForm=[(UIDict["buttonsLayout"], "top", 5), (UIDict["buttonsLayout"], "left", 5)],
                                                     attachPosition=[(UIDict["buttonsLayout"], 'right', 5, 100)])    
     cmds.showWindow(UIwindow)
-
-def mayaToRenderman(matList, newMatType, deleteOld, useSelection, matAttrs):
-    
-    #checking validity
-    if matList == newMatType:
-        cmds.error("Old Material and New Material are the same!")
-    if matList == "Common Maya Materials":
-        matList = ["lambert", "phong", "phongE", "blinn"]
-    elif matList == "Other Renderman Materials":
-        cmds.error("This script is not made to convert other Pixar Shaders or to update them.")
-        
-    if useSelection:
-        sel = cmds.ls(sl=True)
-        if not sel:
-            cmds.error("Please select objects with materials you'd like to convert or uncheck \"Convert Selected\".")
-        materials = materials_from_selection(sel)
-
-    else:
-        materials = cmds.ls(mat=True)
-
-    
-    
-    for oldMaterial in materials:
-        oldMatType = cmds.nodeType(oldMaterial)
-        if oldMaterial == "particleCloud1" or (not useSelection and oldMatType not in matList):
-            continue
-        print "Processing Shader: "+oldMaterial+"\n"    
-        
-
-        # Create RenderMan Shader and set Attributes
-        newMaterial = cmds.shadingNode(newMatType, asShader=True)
-
-        cmds.setAttr(newMaterial + '.specularFresnelMode', 1) # Artistic=0 / Physical=1
-        cmds.setAttr(newMaterial + '.specularModelType', 1) # ggx = 1 
-        
-        #Replace material on existing shader group
-        shaderGroup = cmds.listConnections(oldMaterial+".outColor")[0]
-        cmds.connectAttr(newMaterial+".outColor", shaderGroup+".surfaceShader", f=True)
-        transName = cmds.rename(newMaterial, oldMaterial.replace(oldMatType, newMatType))
-        if deleteOld and oldMaterial != "lambert1":
-            cmds.delete(oldMaterial)
-
-        
-        #Go through common material attributes of the old material and set/connect them for the new material where applicable
-        for matChannel in matAttrs:
-            oldMatAttr = matAttrs[matChannel][oldMatType]
-            newMatAttr = matAttrs[matChannel][newMatType]
-            print "matChannel is " + matChannel + " with oldMatType of  " + oldMatType + " and newMatType of " + newMatType + "\n"
-            
-            if newMatAttr and oldMatAttr:
-                #If the attribute is connected to a map, connect it to the new material
-                if cmds.connectionInfo(oldMaterial+oldMatAttr, id=True):
-                    if matChannel == "overallBump":
-                        fileInputName = (oldMaterial + oldMatAttr)
-                        nodeName = cmds.listConnections(fileInputName)[0]
-                        myBumpFileName = (nodeName + '.bumpValue')
-                        bumpFileConnection = cmds.listConnections(myBumpFileName)[0]
-                        bumpFile = (bumpFileConnection + '.fileTextureName')
-                        bumpFilePath = cmds.getAttr (bumpFile)
-                        print "The bump File Path is " + bumpFilePath
-						
-
-                        #creating pxrTexture node
-                        nrml_NODE = cmds.shadingNode("PxrNormalMap", asTexture=True)
-						normalFile_node = cmds.shadingNode("PxrTexture", name = 'Normal_Map', asTexture=True)
-                        cmds.setAttr(nrml_NODE + '.orientation', 1) # OpenGL=0 / DirectX=1
-                        channel_node = cmds.shadingNode("PxrNormalMap", name = (matChannel + '_Map'), asTexture=True)
-                        #cmds.setAttr(channel_node + '.linearize', 1) # Linearize 0=OFF / 1=ON
-                        cmds.setAttr(nrml_NODE+'.filename', bumpFilePath, type="string")
-                        cmds.connectAttr('%s.resultRGB' %normalFile_node, '%s.inputRGB' %nrml_NODE)
-                        cmds.connectAttr('%s.resultN' %nrml_NODE, ('%s.bumpNormal) %transName)
-
-
-
-                    else:
-                        #get old map info
-                        oldFileConnection = (oldMaterial + oldMatAttr)
-
-                        nodeName = cmds.listConnections(oldFileConnection)[0]
-                        myFileName = (nodeName + '.fileTextureName')
-                        filepath = cmds.getAttr (myFileName)
-						#create pxrTexture node and connect to Renderman shader
-                        channel_node = cmds.shadingNode("PxrTexture", name = (matChannel + '_Map'), asTexture=True)
-                        cmds.setAttr(channel_node + '.linearize', 1) # Linearize 0=OFF / 1=ON
-                        cmds.setAttr(channel_node+'.filename', filepath, type="string")
-                        cmds.connectAttr('%s.resultRGB' %channel_node, ('%s'+ newMatAttr) %transName)
-
-
-                #If no map but some other attribute's value then print note
-                else:
-
-                    print "there is no map associated with this attribute, but there appears to be some type of setting"+"\n"
-
-        
-
-#Goes through a list of objects and returns all of the materials or materials attached to objects in the list
-def materials_from_selection(sel):
-    materials = []
-    matList = ["lambert", "phong", "phongE", "blinn", "PxrSurface", "PxrLayerSurface"]
-    for s in sel:
-        if cmds.nodeType(s) in matList:
-            materials += s
-        else:
-            for shape in cmds.listRelatives(s, shapes=True) or []:
-                shaderGroup = cmds.listConnections(shape, type="shadingEngine")[0]
-                material = cmds.listConnections(shaderGroup+".surfaceShader", d=False)
-                materials += material
-    return materials
-                
-        
-
-
 
 initialize_window()
