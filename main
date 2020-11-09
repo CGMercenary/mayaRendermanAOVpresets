@@ -32,7 +32,7 @@ def initialize_window():
     UIDict["convertForm"] = cmds.formLayout("Convert")
     UIDict["buttonsLayout"] = cmds.frameLayout(label="Render Quality", mh=8)
     cmds.text("Select the levels of sampling you wish to use for renders", wordWrap=True)
-    UIDict["RenderMenu"] = cmds.optionMenu(label="Renderman Render Level")
+    UIDict["renderQualMenu"] = cmds.optionMenu(label="Renderman Render Level")
     cmds.menuItem(label="Low", ann="current default for LnR wips")
     cmds.menuItem(label="Med", ann="for Goldilocks only")
     cmds.menuItem(label="High", ann="final render quality")
@@ -46,14 +46,36 @@ def initialize_window():
      
 
     UIDict["matchFromButton"] = cmds.button(label="Do It!", annotation="Don't press this button yet!",
-                                         command=lambda *args: mayaToRenderman(cmds.optionMenu(UIDict["projectMenu"], q=True, v=True), 
+                                         command=lambda *args: mayaRendermanSettings(cmds.optionMenu(UIDict["projectMenu"], q=True, v=True), 
                                                                                   cmds.optionMenu(UIDict["aovType"], q=True, v=True),
-                                                                                  cmds.checkBox(UIDict["cryptomattedBox"], q=True, v=True),
+                                                                                  cmds.optionMenu(UIDict["renderQualMenu"], q=True, v=True),
+                                                                                  cmds.checkBox(UIDict["aovBox"], q=True, v=True),
+                                                                                  cmds.checkBox(UIDict["cryptomatteBox"], q=True, v=True),
                                                                                   cmds.checkBox(UIDict["shadowBox"], q=True, v=True),
-                                                                                  get_material_attributes()))
+                                                                                  cmds.checkBox(UIDict["renQualBox"], q=True, v=True),
+                                                                                  get_renderman_settings_attributes()))
     cmds.setParent(u=True)
     cmds.formLayout(UIDict["convertForm"], edit=True, attachForm=[(UIDict["buttonsLayout"], "top", 5), (UIDict["buttonsLayout"], "left", 5)],
                                                     attachPosition=[(UIDict["buttonsLayout"], 'right', 5, 100)])    
     cmds.showWindow(UIwindow)
+    
+def mayaRendermanSettings(proj, aov, renQ, selAov, selCrypt, selShad, selRQ, foo):
+    if proj == "BATW":
+        print "good choice on project!"
+    elif proj == "Generic":
+        print "You're so cool!"
+    else: 
+        print "like all the rest"
+        
+    if selRQ:
+        set_renderman_render_sample(renQ)
+        
+def set_renderman_render_sample(renQ):
+    print renQ
+
+def get_renderman_settings_attributes():
+    print "This does nothing, but passes out foo \n"
+    foo=3
+    return foo
 
 initialize_window()
