@@ -61,14 +61,33 @@ def initialize_window():
     
 def mayaRendermanSettings(proj, aov, renQ, selAov, selCrypt, selShad, selRQ, foo):
     if proj == "BATW":
-        print "good choice on project!"
+        print "Good choice on project!"
     elif proj == "Generic":
         print "You're so cool!"
     else: 
-        print "like all the rest"
+        print "blah blah blah"
+        
+    if selShad:
+        set_shadow_settings
         
     if selRQ:
         set_renderman_render_sample(renQ)
+        
+def set_shadow_settings:
+    if "PxrShadowDisplayFilter_base":
+        print "exists"
+        cmds.delete("PxrShadowDisplayFilter_base")
+        print "deleted"
+    else:
+        print "does not exist"
+        
+    cmds.createNode("PxrShadowDisplayFilter_base", n="PxrShadowDisplayFilter")
+    cmds.connectAttr("PxrShadowDisplayFilter_base.message", "rmanGlobals.displayFilters[0]")
+    #
+	cmds.setAttr("PxrShadowDisplayFilter_base.occludedAov" -type "string" "occluded")
+	cmds.setAttr("PxrShadowDisplayFilter_base.unoccludedAov" -type "string" "unoccluded")
+	cmds.setAttr("PxrShadowDisplayFilter_base.shadowAov" -type "string" "shadow")
+	cmds.setAttr("PxrShadowDisplayFilter_base.shadowThreshold" 0.01)
         
 def set_renderman_render_sample(renQ):
     print renQ
