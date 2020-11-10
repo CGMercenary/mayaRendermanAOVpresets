@@ -71,17 +71,17 @@ def mayaRendermanSettings(proj, aov, renQ, selAov, selCrypt, selShad, selRQ, foo
         #create cryptomattes
         cmds.createNode("PxrCryptomatte", n="PxrCryptomatteName")
         cmds.connectAttr("PxrCryptomatteName.message", "rmanGlobals.sampleFilters[0]")
-        cmds.setAttr("PxrCryptomatteName.filename", "<imagedire>/cryptomatteName.<f4>.exr", type="string")
+        cmds.setAttr("PxrCryptomatteName.filename", "<imagedir>/cryptomatteName.<f4>.exr", type="string")
         cmds.setAttr("PxrCryptomatteName.layer", "identifier:object", type="string")
         
         cmds.createNode("PxrCryptomatte", n="PxrCryptomatteMaterial")
         cmds.connectAttr("PxrCryptomatteMaterial.message", "rmanGlobals.sampleFilters[1]")
-        cmds.setAttr("PxrCryptomatteMaterial.filename", "<imagedire>/cryptomatteMaterial.<f4>.exr", type="string")
-        cmds.setAttr("PxrCryptomatteMaterial.layer", "user::__materialid", type="string")
+        cmds.setAttr("PxrCryptomatteMaterial.filename", "<imagedir>/cryptomatteMaterial.<f4>.exr", type="string")
+        cmds.setAttr("PxrCryptomatteMaterial.layer", "identifier:material", type="string")
         
         cmds.createNode("PxrCryptomatte", n="PxrCryptomattePath")
-        cmds.connectAttr("PxrCryptomattePath.message", "rmanGlobals.sampleFilters[2]")
-        cmds.setAttr("PxrCryptomattePath.filename", "<imagedire>/cryptomattePath.<f4>.exr", type="string")
+        cmds.connectAttr("PxrCryptomattePath.msg", "rmanGlobals.sampleFilters[2]")
+        cmds.setAttr("PxrCryptomattePath.filename", "<imagedir>/cryptomattePath.<f4>.exr", type="string")
         cmds.setAttr("PxrCryptomattePath.layer", "identifier:path", type="string")
         
     #create shadow filters
