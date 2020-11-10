@@ -3,8 +3,8 @@ import os
 
 ##2020 Lopsie Schwartz 
 ##Encore VFX
-##Render presets and AOVs
-## 
+##Renderman render presets and AOVs  v01
+##10 Nov 2020
 
 
 def initialize_window():
@@ -66,18 +66,34 @@ def mayaRendermanSettings(proj, aov, renQ, selAov, selCrypt, selShad, selRQ, foo
         print "You're so cool!"
     else: 
         print "blah blah blah"
-
+        
+    if selCrypt:
+        #create cryptomattes
+        cmds.createNode("PxrCryptomatte", n="PxrCryptomatteName")
+        cmds.connectAttr("PxrCryptomatteName.message", "rmanGlobals.sampleFilters[0]")
+        cmds.setAttr("PxrCryptomatteName.filename", "<imagedire>/cryptomatteName.<f4>.exr", type="string")
+        cmds.setAttr("PxrCryptomatteName.layer", "identifier:object", type="string")
+        
+        cmds.createNode("PxrCryptomatte", n="PxrCryptomatteMaterial")
+        cmds.connectAttr("PxrCryptomatteMaterial.message", "rmanGlobals.sampleFilters[1]")
+        cmds.setAttr("PxrCryptomatteMaterial.filename", "<imagedire>/cryptomatteMaterial.<f4>.exr", type="string")
+        cmds.setAttr("PxrCryptomatteMaterial.layer", "user::__materialid", type="string")
+        
+        cmds.createNode("PxrCryptomatte", n="PxrCryptomattePath")
+        cmds.connectAttr("PxrCryptomattePath.message", "rmanGlobals.sampleFilters[2]")
+        cmds.setAttr("PxrCryptomattePath.filename", "<imagedire>/cryptomattePath.<f4>.exr", type="string")
+        cmds.setAttr("PxrCryptomattePath.layer", "identifier:path", type="string")
+        
+    #create shadow filters
     if selShad:
-        print "this works"
         cmds.createNode("PxrShadowDisplayFilter_base", n="PxrShadowDisplayFilter")
-        print "but did this?"
         cmds.connectAttr("PxrShadowDisplayFilter_base.message", "rmanGlobals.displayFilters[0]")
-        print "or this"
         cmds.setAttr("PxrShadowDisplayFilter_base.occludedAov", "occluded", type="string")
         cmds.setAttr("PxrShadowDisplayFilter_base.unoccludedAov", "unoccluded", type="string")
         cmds.setAttr("PxrShadowDisplayFilter_base.shadowAov", "shadow", type="string")
         cmds.setAttr("PxrShadowDisplayFilter_base.shadowThreshold", 0.01)
-      
+
+    #set Render quality
     if selRQ:
         set_renderman_render_sample(renQ)
         
