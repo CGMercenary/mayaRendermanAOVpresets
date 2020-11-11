@@ -1,5 +1,6 @@
 import maya.cmds as cmds
 import os
+import maya.mel as mel
 
 ##2020 Lopsie Schwartz 
 ##Encore VFX
@@ -66,6 +67,13 @@ def mayaRendermanSettings(proj, aov, renQ, selAov, selCrypt, selShad, selRQ, foo
         print "You're so cool!"
     else: 
         print "blah blah blah"
+    
+    if selAov:
+        print "you have selected to created AOVs"
+        cmds.createNode("rmanDisplayChannel", n="albedo")
+        cmds.setAttr("albedo.channelType", "float", type="string")
+        cmds.setAttr("albedo.channelSource", "lpe:nothruput;noinfinitecheck;noclamp;unoccluded;overwrite;C<.S'passthru'>*((U2L)|O)", type="string")
+        cmds.connectAttr("albedo.msg", "rmanDefaultDisplay.displayChannels[2]")
         
     if selCrypt:
         #create cryptomattes
