@@ -1,11 +1,12 @@
 import maya.cmds as cmds
 import os
 import maya.mel as mel
+import rfm2.ui.widgets as wgt
 
 ##2020 Lopsie Schwartz 
 ##Encore VFX
 ##Renderman render presets and AOVs  v01
-##10 Nov 2020
+##13 Nov 2020
 
 
 def initialize_window():
@@ -15,10 +16,10 @@ def initialize_window():
     #Create window
     UIwindow = cmds.window("RendermanPresetWindow", title="Renderman Presets", resizeToFitChildren=1, mnb=False, mxb=False, sizeable=True)
     UIDict = {}
-    
     UIDict["convertForm"] = cmds.formLayout("Convert")
     UIDict["buttonsLayout"] = cmds.frameLayout(label="AOVs", mh=8)
     cmds.text("Select a show or project, then the type of AOVs you want.", wordWrap=True)
+    #AOV dropdown menus
     UIDict["projectMenu"] = cmds.optionMenu(label="Show or Project")
     cmds.menuItem(label="BATW", ann="currently only working item")
     cmds.menuItem(label="CTPJ", ann="for Denys")
@@ -30,6 +31,7 @@ def initialize_window():
     cmds.menuItem(label="Generic", ann="the basic AOV set")
     cmds.menuItem(label="Vehicle", ann="for the batmobile specifically") 
    
+   #Render Quality Dropdown Menu
     UIDict["convertForm"] = cmds.formLayout("Convert")
     UIDict["buttonsLayout"] = cmds.frameLayout(label="Render Quality", mh=8)
     cmds.text("Select the levels of sampling you wish to use for renders", wordWrap=True)
@@ -39,6 +41,7 @@ def initialize_window():
     cmds.menuItem(label="High", ann="final render quality")
     cmds.menuItem(label="Absurd", ann="it'll never finish rendering")
     
+    #checkboxes
     UIDict["aovBox"] = cmds.checkBox(label="Create AOVs", v=False, annotation="If checked, the AOVs will be created.")
     UIDict["cryptomatteBox"] = cmds.checkBox(label="Create Standard Cryptomattes", v=False, annotation="If checked, Cryptomattes will be generated for Name, Path and Material.")
     UIDict["shadowBox"] = cmds.checkBox(label="Create Shadow Passes", v=True, annotation="If checked, filters will be set to allow for shadow mattes")
@@ -46,7 +49,7 @@ def initialize_window():
     
      
 
-    UIDict["matchFromButton"] = cmds.button(label="Do It!", annotation="Don't press this button yet!",
+    UIDict["matchFromButton"] = cmds.button(label="Do It!", annotation="Did you check the checkboxes?",
                                          command=lambda *args: mayaRendermanSettings(cmds.optionMenu(UIDict["projectMenu"], q=True, v=True), 
                                                                                   cmds.optionMenu(UIDict["aovType"], q=True, v=True),
                                                                                   cmds.optionMenu(UIDict["renderQualMenu"], q=True, v=True),
@@ -70,36 +73,38 @@ def mayaRendermanSettings(proj, aov, renQ, selAov, selCrypt, selShad, selRQ, foo
     
     if selAov:
         print "you have selected to created AOVs"
-        cmds.createNode("rmanDisplayChannel", n="albedo")
-        cmds.setAttr("albedo.channelType", "float", type="string")
-        cmds.setAttr("albedo.channelSource", "lpe:nothruput;noinfinitecheck;noclamp;unoccluded;overwrite;C<.S'passthru'>*((U2L)|O)", type="string")
-        cmds.connectAttr("albedo.msg", "rmanDefaultDisplay.displayChannels[2]")
+        set_AOVs()
+        
         
     if selCrypt:
+        print "Setting the basic 3 cryptomattes"
         #create cryptomattes
-        cmds.createNode("PxrCryptomatte", n="PxrCryptomatteName")
-        cmds.connectAttr("PxrCryptomatteName.message", "rmanGlobals.sampleFilters[0]")
-        cmds.setAttr("PxrCryptomatteName.filename", "<imagedir>/cryptomatteName.<f4>.exr", type="string")
-        cmds.setAttr("PxrCryptomatteName.layer", "identifier:object", type="string")
+        cryptoN = cmds.createNode("PxrCryptomatte", n="PxrCryptomatteName")
+        cmds.connectAttr(cryptoN+".msg", "rmanGlobals.sampleFilters[0]", force=True)
+        cmds.setAttr(cryptoN+".filename", "<imagedir>/cryptomatteName.<f4>.exr", type="string")
+        cmds.setAttr(cryptoN+".layer", "identifier:object", type="string")
         
-        cmds.createNode("PxrCryptomatte", n="PxrCryptomatteMaterial")
-        cmds.connectAttr("PxrCryptomatteMaterial.message", "rmanGlobals.sampleFilters[1]")
-        cmds.setAttr("PxrCryptomatteMaterial.filename", "<imagedir>/cryptomatteMaterial.<f4>.exr", type="string")
-        cmds.setAttr("PxrCryptomatteMaterial.layer", "identifier:material", type="string")
+        cryptoM = cmds.createNode("PxrCryptomatte", n="PxrCryptomatteMaterial")
+        cmds.connectAttr(cryptoM+".msg", "rmanGlobals.sampleFilters[1]", force=True)
+        cmds.setAttr(cryptoM+".filename", "<imagedir>/cryptomatteMaterial.<f4>.exr", type="string")
+        cmds.setAttr(cryptoM+".layer", "identifier:material", type="string")
         
-        cmds.createNode("PxrCryptomatte", n="PxrCryptomattePath")
-        cmds.connectAttr("PxrCryptomattePath.msg", "rmanGlobals.sampleFilters[2]")
-        cmds.setAttr("PxrCryptomattePath.filename", "<imagedir>/cryptomattePath.<f4>.exr", type="string")
-        cmds.setAttr("PxrCryptomattePath.layer", "identifier:path", type="string")
+        cryptoO = cmds.createNode("PxrCryptomatte", n="PxrCryptomattePath")
+        cmds.connectAttr(cryptoO+".msg", "rmanGlobals.sampleFilters[2]", force=True)
+        cmds.setAttr(cryptoO+".filename", "<imagedir>/cryptomattePath.<f4>.exr", type="string")
+        cmds.setAttr(cryptoO+".layer", "identifier:path", type="string")
+        
+        mel.eval("rman_update_globals();")
         
     #create shadow filters
     if selShad:
-        cmds.createNode("PxrShadowDisplayFilter_base", n="PxrShadowDisplayFilter")
-        cmds.connectAttr("PxrShadowDisplayFilter_base.message", "rmanGlobals.displayFilters[0]")
-        cmds.setAttr("PxrShadowDisplayFilter_base.occludedAov", "occluded", type="string")
-        cmds.setAttr("PxrShadowDisplayFilter_base.unoccludedAov", "unoccluded", type="string")
-        cmds.setAttr("PxrShadowDisplayFilter_base.shadowAov", "shadow", type="string")
-        cmds.setAttr("PxrShadowDisplayFilter_base.shadowThreshold", 0.01)
+        print "Creating the display filter needed for shadow AOVs"
+        shadFilt = cmds.createNode("PxrShadowDisplayFilter", n="PxrShadowDisplayFilter")
+        cmds.connectAttr(shadFilt+".msg", "rmanGlobals.displayFilters[0]", force=True)
+        cmds.setAttr(shadFilt+".occludedAov", "occluded", type="string")
+        cmds.setAttr(shadFilt+".unoccludedAov", "unoccluded", type="string")
+        cmds.setAttr(shadFilt+".shadowAov", "shadow", type="string")
+        cmds.setAttr(shadFilt+".shadowThreshold", 0.01)
 
     #set Render quality
     if selRQ:
@@ -130,5 +135,31 @@ def get_renderman_settings_attributes():
     print "This does nothing, but passes out foo \n"
     foo=3
     return foo
+    
+def set_AOVs():
+    print "AOV creation function"
+    create_AOV("albedo", "color", "lpe:nothruput;noinfinitecheck;noclamp;unoccluded;overwrite;C<.S'passthru'>*((U2L)|O)", 1, 2)
+    create_AOV("directDiffuse", "color", "lpe:C<RD>[<L.>O]", 1, 3)
+    #create_AOV("indirectDiffuse", "color", "lpe:C<RD>[DS]+[<L.>O]", 1, 4)
+    #create_AOV("beauty", "color", "lpe:C[DS]*[<L.>O]", 1, 3)
+   
+    
+    #cmds.createNode("rmanDisplayChannel", n="albedo")
+    #cmds.setAttr("albedo.channelType", "color", type="string")
+    #cmds.setAttr("albedo.channelSource", "lpe:nothruput;noinfinitecheck;noclamp;unoccluded;overwrite;C<.S'passthru'>*((U2L)|O)", type="string")
+    #cmds.setAttr("albedo.relativepixelvariance", 1)
+    #cmds.connectAttr("albedo.msg", "rmanDefaultDisplay.displayChannels[2]")
+
+    
+def create_AOV(name, chanType, chanSrc, rpv, i):
+    #function to create AOV
+    thisNode = cmds.createNode("rmanDisplayChannel", n = name)
+    cmds.setAttr(name + ".channelType", chanType, type="string")
+    cmds.setAttr(name + ".channelSource", chanSrc, type="string")
+    cmds.setAttr(name + ".relativepixelvariance", rpv)
+    cmds.connectAttr(thisNode + ".msg", "rmanDisplay.displayChannels[i]", force=True)
+
+    mel.eval("rman_update_globals();")
+    
 
 initialize_window()
